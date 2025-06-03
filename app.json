@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "BayeZaleCutt",
-    "slug": "BayeZaleCutt",
+    "slug": "bayezalecutt",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,10 +20,17 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.kheuchbi.BayeZaleCutt"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "2bf42978-f50d-4a91-bf08-3e269d12097f"
+      }
+    },
+    "owner": "cheikhbi"
   }
 }
