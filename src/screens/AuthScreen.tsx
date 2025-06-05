@@ -1,4 +1,4 @@
-// src/screens/AuthScreen.tsx - Design Ultra-Moderne
+// src/screens/AuthScreen.tsx - Avec Google Auth Fonctionnel
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -13,9 +13,24 @@ import {
   Platform,
   ScrollView,
   Animated,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+
+// Import Firebase Auth
+import { auth } from '../config/firebase';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithCredential,
+  sendPasswordResetEmail,
+  updateProfile
+} from 'firebase/auth';
+
+// Import Google Sign-In
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
 const { width, height } = Dimensions.get('window');
 
@@ -37,9 +52,13 @@ export default function AuthScreen({ onComplete, onSkip }: AuthScreenProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const logoRotation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Animation d'entrée spectaculaire
+    // Configuration Google Sign-In
+    configureGoogleSignIn();
+
+    // Animation d'entrée spectaculaire avec rotation du logo
     Animated.sequence([
       Animated.parallel([
         Animated.timing(fadeAnim, {
@@ -59,49 +78,216 @@ export default function AuthScreen({ onComplete, onSkip }: AuthScreenProps) {
           useNativeDriver: true,
         }),
       ]),
+      // Animation de rotation du logo après l'entrée
+      Animated.timing(logoRotation, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
     ]).start();
   }, []);
 
-  const handleAuth = async () => {
+  // Configuration Google Sign-In
+  const configureGoogleSignIn = () => {
+    GoogleSignin.configure({
+      // Remplacez par votre Web Client ID depuis Firebase Console
+      webClientId: 'VOTRE_WEB_CLIENT_ID_FIREBASE.apps.googleusercontent.com',
+      offlineAccess: true,
+      hostedDomain: '',
+      forceCodeForRefreshToken: true,
+    });
+  };
+
+  // Animation de rotation continue pour le logo
+  const startLogoAnimation = () => {
+    logoRotation.setValue(0);
+    Animated.loop(
+      Animated.timing(logoRotation, {
+        toValue: 1,
+        duration: 3000,
+        useNativeDriver: true,
+      }),
+    ).start();
+  };
+
+  // Validation des données
+  const validateForm = () => {
     if (!email || !password) {
-      Alert.alert('🔥 Attention', 'Veuillez remplir tous les champs pour continuer');
-      return;
+      Alert.alert('🔥 Champs manquants', 'Veuillez remplir tous les champs obligatoires');
+      return false;
     }
 
-    if (!isLogin && password !== confirmPassword) {
-      Alert.alert('🔥 Attention', 'Les mots de passe ne correspondent pas');
-      return;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('📧 Email invalide', 'Veuillez entrer une adresse email valide');
+      return false;
     }
+
+    if (password.length < 6) {
+      Alert.alert('🔒 Mot de passe trop court', 'Le mot de passe doit contenir au moins 6 caractères');
+      return false;
+    }
+
+    if (!isLogin) {
+      if (!name.trim()) {
+        Alert.alert('👤 Nom manquant', 'Veuillez entrer votre nom complet');
+        return false;
+      }
+      if (password !== confirmPassword) {
+        Alert.alert('🔒 Mots de passe différents', 'Les mots de passe ne correspondent pas');
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  // Authentification Email/Password
+  const handleEmailAuth = async () => {
+    if (!validateForm()) return;
 
     setIsLoading(true);
     
-    // Animation du bouton pendant le loading
-    Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 0.95,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    try {
+      if (isLogin) {
+        // Connexion
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        console.log('Connexion réussie:', userCredential.user.uid);
+        
+        Alert.alert(
+          '🎉 Connexion réussie !',
+          `Bienvenue ${userCredential.user.displayName || userCredential.user.email} !`,
+          [{ text: 'Continuer', onPress: onComplete }]
+        );
+      } else {
+        // Inscription
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        
+        // Mettre à jour le profil avec le nom
+        await updateProfile(userCredential.user, {
+          displayName: name.trim()
+        });
 
-    // Simulation authentification
-    setTimeout(() => {
+        console.log('Inscription réussie:', userCredential.user.uid);
+        
+        Alert.alert(
+          '🎉 Compte créé !',
+          `Bienvenue dans la famille Baye Zale, ${name} !`,
+          [{ text: 'Continuer', onPress: onComplete }]
+        );
+      }
+    } catch (error: any) {
+      console.error('Erreur Auth:', error);
+      
+      let errorMessage = 'Une erreur est survenue';
+      
+      switch (error.code) {
+        case 'auth/user-not-found':
+          errorMessage = 'Aucun compte trouvé avec cet email';
+          break;
+        case 'auth/wrong-password':
+          errorMessage = 'Mot de passe incorrect';
+          break;
+        case 'auth/email-already-in-use':
+          errorMessage = 'Un compte existe déjà avec cet email';
+          break;
+        case 'auth/weak-password':
+          errorMessage = 'Le mot de passe est trop faible';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Adresse email invalide';
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = 'Trop de tentatives. Réessayez plus tard.';
+          break;
+        default:
+          errorMessage = error.message || 'Erreur de connexion';
+      }
+      
+      Alert.alert('❌ Erreur', errorMessage);
+    } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Authentification Google FONCTIONNELLE
+  const handleGoogleAuth = async () => {
+    setIsLoading(true);
+    
+    try {
+      console.log('🚀 Début de l\'authentification Google...');
+      
+      // Vérifier si Google Play Services sont disponibles
+      await GoogleSignin.hasPlayServices({
+        showPlayServicesUpdateDialog: true,
+      });
+      
+      console.log('✅ Google Play Services disponibles');
+      
+      // Déconnexion préalable pour éviter les conflits
+      await GoogleSignin.signOut();
+      
+      // Lancer la connexion Google
+      const userInfo = await GoogleSignin.signIn();
+      console.log('📧 Utilisateur Google connecté:', userInfo.user.email);
+      
+      // Créer les credentials Firebase
+      const googleCredential = GoogleAuthProvider.credential(userInfo.idToken);
+      
+      // Authentifier avec Firebase
+      const userCredential = await signInWithCredential(auth, googleCredential);
+      
+      console.log('🎉 Authentification Firebase réussie:', userCredential.user.uid);
+      
       Alert.alert(
-        '🎉 Succès !', 
-        isLogin ? 'Connexion réussie ! Bienvenue chez Baye Zale Cutt' : 'Compte créé avec succès ! Bienvenue dans la famille',
-        [{ 
-          text: 'Continuer', 
-          onPress: onComplete,
-          style: 'default'
-        }]
+        '🎉 Connexion Google réussie !',
+        `Bienvenue ${userCredential.user.displayName || userCredential.user.email} !`,
+        [{ text: 'Continuer', onPress: onComplete }]
       );
-    }, 1500);
+      
+    } catch (error: any) {
+      console.error('❌ Erreur Google Auth:', error);
+      
+      let errorMessage = 'Impossible de se connecter avec Google';
+      
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        console.log('ℹ️ Connexion Google annulée par l\'utilisateur');
+        return; // Ne pas afficher d'erreur si l'utilisateur annule
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        errorMessage = 'Connexion en cours, veuillez patienter...';
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        errorMessage = 'Google Play Services non disponible';
+      } else if (error.code === 'auth/account-exists-with-different-credential') {
+        errorMessage = 'Un compte existe déjà avec cette adresse email';
+      } else if (error.code === 'auth/invalid-credential') {
+        errorMessage = 'Credentials Google invalides';
+      } else {
+        console.log('🔍 Code d\'erreur Google:', error.code);
+        console.log('🔍 Message d\'erreur:', error.message);
+      }
+      
+      Alert.alert('❌ Erreur Google', errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Mot de passe oublié
+  const handleForgotPassword = async () => {
+    if (!email) {
+      Alert.alert('📧 Email requis', 'Veuillez entrer votre email pour réinitialiser votre mot de passe');
+      return;
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+      Alert.alert(
+        '📧 Email envoyé',
+        'Un lien de réinitialisation a été envoyé à votre adresse email'
+      );
+    } catch (error: any) {
+      Alert.alert('❌ Erreur', 'Impossible d\'envoyer l\'email de réinitialisation');
+    }
   };
 
   const toggleAuthMode = () => {
@@ -127,46 +313,10 @@ export default function AuthScreen({ onComplete, onSkip }: AuthScreenProps) {
     setName('');
   };
 
-  const renderFloatingElements = () => (
-    <View style={styles.floatingElements}>
-      {[...Array(15)].map((_, i) => (
-        <Animated.View
-          key={i}
-          style={[
-            styles.floatingElement,
-            {
-              left: Math.random() * width,
-              top: Math.random() * height,
-              opacity: fadeAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 0.1],
-              }),
-              transform: [{
-                translateY: fadeAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [20, 0],
-                }),
-              }],
-            }
-          ]}
-        />
-      ))}
-    </View>
-  );
-
-  const renderSocialButton = (icon: string, label: string, colors: string[]) => (
-    <TouchableOpacity style={styles.socialButton}>
-      <LinearGradient
-        colors={colors}
-        style={styles.socialButtonGradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <Text style={styles.socialIcon}>{icon}</Text>
-        <Text style={styles.socialLabel}>{label}</Text>
-      </LinearGradient>
-    </TouchableOpacity>
-  );
+  const spin = logoRotation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
 
   return (
     <SafeAreaView style={styles.container}>
@@ -177,7 +327,30 @@ export default function AuthScreen({ onComplete, onSkip }: AuthScreenProps) {
         end={{ x: 1, y: 1 }}
       >
         {/* Éléments flottants décoratifs */}
-        {renderFloatingElements()}
+        <View style={styles.floatingElements}>
+          {[...Array(12)].map((_, i) => (
+            <Animated.View
+              key={i}
+              style={[
+                styles.floatingElement,
+                {
+                  left: Math.random() * width,
+                  top: Math.random() * height,
+                  opacity: fadeAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 0.1],
+                  }),
+                  transform: [{
+                    translateY: fadeAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [20, 0],
+                    }),
+                  }],
+                }
+              ]}
+            />
+          ))}
+        </View>
 
         {/* Bouton Skip élégant */}
         <TouchableOpacity style={styles.skipButton} onPress={onSkip}>
@@ -208,27 +381,34 @@ export default function AuthScreen({ onComplete, onSkip }: AuthScreenProps) {
             >
               {/* Glassmorphism Card */}
               <BlurView intensity={40} style={styles.glassCard}>
-                {/* Header avec logo animé */}
+                {/* Header avec votre logo */}
                 <View style={styles.header}>
                   <Animated.View 
                     style={[
                       styles.logoContainer,
                       {
-                        transform: [{
-                          rotate: fadeAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: ['0deg', '360deg'],
-                          }),
-                        }],
+                        transform: [{ rotate: spin }],
                       }
                     ]}
+                    onTouchStart={startLogoAnimation}
                   >
-                    <LinearGradient
-                      colors={['#FFD700', '#FFA500']}
-                      style={styles.logoGradient}
-                    >
-                      <Text style={styles.logoIcon}>✂️</Text>
-                    </LinearGradient>
+                    {/* Votre logo - remplacez cette Image par votre fichier logo */}
+                    <View style={styles.logoBackground}>
+                      <Image
+                        source={require('../../assets/logo.png')} // Remplacez par le chemin vers votre logo
+                        style={styles.logoImage}
+                        resizeMode="contain"
+                        onError={() => {
+                          // Fallback en cas d'erreur de chargement
+                          console.log('Logo non trouvé, utilisation du placeholder');
+                        }}
+                      />
+                      {/* Fallback si l'image ne charge pas */}
+                      <View style={styles.logoFallback}>
+                        <Text style={styles.logoText}>BZ</Text>
+                        <Text style={styles.logoSubtext}>CUTT</Text>
+                      </View>
+                    </View>
                   </Animated.View>
                   
                   <Text style={styles.title}>
@@ -309,6 +489,7 @@ export default function AuthScreen({ onComplete, onSkip }: AuthScreenProps) {
                         keyboardType="email-address"
                         autoCapitalize="none"
                         autoComplete="email"
+                        autoCorrect={false}
                       />
                     </View>
                   </Animated.View>
@@ -388,7 +569,7 @@ export default function AuthScreen({ onComplete, onSkip }: AuthScreenProps) {
                   {isLogin && (
                     <TouchableOpacity 
                       style={styles.forgotPassword}
-                      onPress={() => Alert.alert('🔄 Récupération', 'Fonctionnalité bientôt disponible')}
+                      onPress={handleForgotPassword}
                     >
                       <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
                     </TouchableOpacity>
@@ -397,7 +578,7 @@ export default function AuthScreen({ onComplete, onSkip }: AuthScreenProps) {
                   {/* Auth Button avec gradient animé */}
                   <TouchableOpacity
                     style={styles.authButton}
-                    onPress={handleAuth}
+                    onPress={handleEmailAuth}
                     disabled={isLoading}
                   >
                     <LinearGradient
@@ -452,12 +633,46 @@ export default function AuthScreen({ onComplete, onSkip }: AuthScreenProps) {
                     <View style={styles.dividerLine} />
                   </View>
 
-                  {/* Social Login Buttons */}
-                  <View style={styles.socialButtonsContainer}>
-                    {renderSocialButton('G', 'Google', ['#4285F4', '#34A853'])}
-                    {renderSocialButton('🍎', 'Apple', ['#000000', '#1c1c1e'])}
-                    {renderSocialButton('📱', 'Téléphone', ['#25D366', '#128C7E'])}
-                  </View>
+                  {/* Google Login Button FONCTIONNEL */}
+                  <TouchableOpacity
+                    style={styles.googleButton}
+                    onPress={handleGoogleAuth}
+                    disabled={isLoading}
+                  >
+                    <LinearGradient
+                      colors={isLoading 
+                        ? ['#9CA3AF', '#6B7280']
+                        : ['#4285F4', '#34A853']
+                      }
+                      style={styles.googleButtonGradient}
+                    >
+                      {isLoading ? (
+                        <View style={styles.loadingContainer}>
+                          <Animated.View 
+                            style={[
+                              styles.loadingSpinner,
+                              {
+                                transform: [{
+                                  rotate: fadeAnim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: ['0deg', '360deg'],
+                                  }),
+                                }],
+                              }
+                            ]}
+                          >
+                            <Text style={styles.loadingIcon}>🔄</Text>
+                          </Animated.View>
+                          <Text style={styles.googleButtonText}>Connexion Google...</Text>
+                        </View>
+                      ) : (
+                        <>
+                          <Text style={styles.googleIcon}>G</Text>
+                          <Text style={styles.googleButtonText}>Continuer avec Google</Text>
+                        </>
+                      )}
+                    </LinearGradient>
+                  </TouchableOpacity>
                 </Animated.View>
               </BlurView>
             </Animated.View>
@@ -559,19 +774,45 @@ const styles = StyleSheet.create({
   logoContainer: {
     marginBottom: 24,
   },
-  logoGradient: {
+  logoBackground: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+    position: 'relative',
+  },
+  logoImage: {
     width: 80,
     height: 80,
     borderRadius: 40,
+  },
+  logoFallback: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#4F7FEE',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#FFD700',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
   },
-  logoIcon: {
-    fontSize: 32,
+  logoText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    lineHeight: 28,
+  },
+  logoSubtext: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: -4,
   },
   title: {
     fontSize: 32,
@@ -706,25 +947,24 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     fontWeight: '500',
   },
-  socialButtonsContainer: {
-    gap: 12,
-  },
-  socialButton: {
+  googleButton: {
     borderRadius: 16,
     overflow: 'hidden',
   },
-  socialButtonGradient: {
+  googleButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
     paddingHorizontal: 24,
   },
-  socialIcon: {
+  googleIcon: {
     fontSize: 20,
     marginRight: 12,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
-  socialLabel: {
+  googleButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',

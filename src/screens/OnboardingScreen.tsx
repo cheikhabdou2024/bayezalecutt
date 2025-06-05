@@ -1,4 +1,4 @@
-// src/screens/OnboardingScreen.tsx - Design Premium
+// src/screens/OnboardingScreen.tsx - Design Premium Responsive
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -11,10 +11,20 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Animated,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width, height } = Dimensions.get('window');
+
+// Fonction pour déterminer le type d'écran
+const getScreenType = () => {
+  const ratio = height / width;
+  if (width < 400) return 'small'; // Petits écrans
+  if (ratio < 1.6) return 'tablet'; // Tablettes ou écrans larges
+  if (ratio > 2.1) return 'tall'; // Écrans très hauts (iPhone X+)
+  return 'normal'; // Écrans normaux
+};
 
 interface OnboardingData {
   id: number;
@@ -35,6 +45,8 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
   const scrollViewRef = useRef<ScrollView>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
+  
+  const screenType = getScreenType();
 
   useEffect(() => {
     // Animation d'entrée
@@ -132,6 +144,119 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
     }
   };
 
+  // Styles dynamiques basés sur le type d'écran
+  const dynamicStyles = StyleSheet.create({
+    // Ajustements pour petits écrans
+    ...(screenType === 'small' && {
+      iconContainer: {
+        marginBottom: 24,
+      },
+      iconBackground: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+      },
+      mainIcon: {
+        fontSize: 32,
+      },
+      title: {
+        fontSize: 24,
+      },
+      subtitle: {
+        fontSize: 16,
+      },
+      description: {
+        fontSize: 14,
+        paddingHorizontal: 8,
+      },
+      contentContainer: {
+        paddingTop: height * 0.15, // 15% du haut
+        paddingHorizontal: 16,
+      },
+      actionButtonText: {
+        fontSize: 16,
+      },
+    }),
+
+    // Ajustements pour tablettes
+    ...(screenType === 'tablet' && {
+      iconContainer: {
+        marginBottom: 48,
+      },
+      iconBackground: {
+        width: 140,
+        height: 140,
+        borderRadius: 70,
+      },
+      mainIcon: {
+        fontSize: 64,
+      },
+      title: {
+        fontSize: 42,
+      },
+      subtitle: {
+        fontSize: 24,
+      },
+      description: {
+        fontSize: 18,
+        paddingHorizontal: 32,
+      },
+      contentContainer: {
+        paddingTop: height * 0.2,
+        paddingHorizontal: 64,
+      },
+      featuresContainer: {
+        paddingHorizontal: 32,
+      },
+    }),
+
+    // Ajustements pour écrans très hauts
+    ...(screenType === 'tall' && {
+      contentContainer: {
+        paddingTop: height * 0.25, // Plus d'espace en haut
+        paddingHorizontal: 32,
+      },
+      textContainer: {
+        marginBottom: 64,
+      },
+    }),
+
+    // Ajustements pour écrans normaux
+    ...(screenType === 'normal' && {
+      contentContainer: {
+        paddingTop: height * 0.2,
+        paddingHorizontal: 32,
+      },
+    }),
+  });
+
+  const renderFloatingElements = () => (
+    <View style={styles.floatingElements}>
+      {[...Array(screenType === 'small' ? 10 : 15)].map((_, i) => (
+        <Animated.View
+          key={i}
+          style={[
+            styles.floatingElement,
+            {
+              left: Math.random() * width,
+              top: Math.random() * height,
+              opacity: fadeAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, screenType === 'small' ? 0.05 : 0.1],
+              }),
+              transform: [{
+                translateY: fadeAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [20, 0],
+                }),
+              }],
+            }
+          ]}
+        />
+      ))}
+    </View>
+  );
+
   const renderPage = (item: OnboardingData, index: number) => (
     <View key={item.id} style={styles.page}>
       <LinearGradient
@@ -140,61 +265,55 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
-        {/* Motif de fond décoratif */}
-        <View style={styles.decorativePattern}>
-          {[...Array(20)].map((_, i) => (
-            <View
-              key={i}
-              style={[
-                styles.decorativeCircle,
-                {
-                  left: Math.random() * width,
-                  top: Math.random() * height,
-                  opacity: 0.1,
-                  transform: [{ scale: Math.random() * 0.8 + 0.2 }],
-                }
-              ]}
-            />
-          ))}
-        </View>
+        {/* Éléments flottants décoratifs */}
+        {renderFloatingElements()}
 
         {/* Contenu principal */}
-        <View style={styles.contentContainer}>
+        <View style={[styles.contentContainer, dynamicStyles.contentContainer]}>
           {/* Icône principale avec animation */}
           <Animated.View 
             style={[
               styles.iconContainer,
+              dynamicStyles.iconContainer,
               {
                 opacity: fadeAnim,
                 transform: [{ translateY: slideAnim }],
               }
             ]}
           >
-            <View style={styles.iconBackground}>
-              <Text style={styles.mainIcon}>{item.icon}</Text>
+            <View style={[styles.iconBackground, dynamicStyles.iconBackground]}>
+              <Text style={[styles.mainIcon, dynamicStyles.mainIcon]}>{item.icon}</Text>
             </View>
-            <View style={styles.iconGlow} />
+            <View style={[styles.iconGlow, {
+              width: (dynamicStyles.iconBackground?.width || 120) + 20,
+              height: (dynamicStyles.iconBackground?.height || 120) + 20,
+              borderRadius: ((dynamicStyles.iconBackground?.width || 120) + 20) / 2,
+              top: -10,
+              left: -10,
+            }]} />
           </Animated.View>
 
           {/* Titre et sous-titre */}
           <Animated.View 
             style={[
               styles.textContainer,
+              dynamicStyles.textContainer,
               {
                 opacity: fadeAnim,
                 transform: [{ translateY: slideAnim }],
               }
             ]}
           >
-            <Text style={styles.title}>{item.title}</Text>
-            <Text style={styles.subtitle}>{item.subtitle}</Text>
-            <Text style={styles.description}>{item.description}</Text>
+            <Text style={[styles.title, dynamicStyles.title]}>{item.title}</Text>
+            <Text style={[styles.subtitle, dynamicStyles.subtitle]}>{item.subtitle}</Text>
+            <Text style={[styles.description, dynamicStyles.description]}>{item.description}</Text>
           </Animated.View>
 
           {/* Features avec animations décalées */}
           <Animated.View 
             style={[
               styles.featuresContainer,
+              dynamicStyles.featuresContainer,
               {
                 opacity: fadeAnim,
                 transform: [{ translateY: slideAnim }],
@@ -218,12 +337,19 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
                   }
                 ]}
               >
-                <View style={styles.featureIconContainer}>
-                  <Text style={styles.featureIcon}>{feature.icon}</Text>
+                <View style={[styles.featureIconContainer, {
+                  width: screenType === 'small' ? 32 : 40,
+                  height: screenType === 'small' ? 32 : 40,
+                  borderRadius: screenType === 'small' ? 16 : 20,
+                }]}>
+                  <Text style={[styles.featureIcon, {
+                    fontSize: screenType === 'small' ? 16 : 20,
+                  }]}>{feature.icon}</Text>
                 </View>
                 <Text style={[
                   styles.featureText,
-                  feature.highlight && styles.featureTextHighlight
+                  feature.highlight && styles.featureTextHighlight,
+                  { fontSize: screenType === 'small' ? 14 : 16 }
                 ]}>
                   {feature.text}
                 </Text>
@@ -241,7 +367,9 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
   );
 
   const renderProgressIndicator = () => (
-    <View style={styles.progressContainer}>
+    <View style={[styles.progressContainer, {
+      top: screenType === 'small' ? 80 : 120,
+    }]}>
       {onboardingData.map((_, index) => (
         <Animated.View
           key={index}
@@ -262,12 +390,16 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
   return (
     <SafeAreaView style={styles.container}>
       {/* Bouton Skip élégant */}
-      <TouchableOpacity style={styles.skipButton} onPress={onComplete}>
+      <TouchableOpacity style={[styles.skipButton, {
+        top: screenType === 'small' ? 40 : 60,
+      }]} onPress={onComplete}>
         <LinearGradient
           colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.1)']}
           style={styles.skipButtonGradient}
         >
-          <Text style={styles.skipText}>Passer</Text>
+          <Text style={[styles.skipText, {
+            fontSize: screenType === 'small' ? 12 : 14,
+          }]}>Passer</Text>
         </LinearGradient>
       </TouchableOpacity>
 
@@ -288,7 +420,10 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
       </ScrollView>
 
       {/* Bouton d'action avec design premium */}
-      <View style={styles.bottomContainer}>
+      <View style={[styles.bottomContainer, {
+        bottom: screenType === 'small' ? 40 : 60,
+        paddingHorizontal: screenType === 'small' ? 16 : 24,
+      }]}>
         <TouchableOpacity style={styles.actionButton} onPress={goToNext}>
           <LinearGradient
             colors={currentPage === onboardingData.length - 1 
@@ -299,11 +434,17 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
-            <Text style={styles.actionButtonText}>
+            <Text style={[styles.actionButtonText, dynamicStyles.actionButtonText]}>
               {currentPage === onboardingData.length - 1 ? 'Commencer l\'Aventure' : 'Suivant'}
             </Text>
-            <View style={styles.actionButtonIcon}>
-              <Text style={styles.actionButtonIconText}>
+            <View style={[styles.actionButtonIcon, {
+              width: screenType === 'small' ? 24 : 32,
+              height: screenType === 'small' ? 24 : 32,
+              borderRadius: screenType === 'small' ? 12 : 16,
+            }]}>
+              <Text style={[styles.actionButtonIconText, {
+                fontSize: screenType === 'small' ? 12 : 16,
+              }]}>
                 {currentPage === onboardingData.length - 1 ? '🚀' : '→'}
               </Text>
             </View>
@@ -313,7 +454,9 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
         {/* Texte d'encouragement */}
         {currentPage === onboardingData.length - 1 && (
           <Animated.View style={[styles.encouragementContainer, { opacity: fadeAnim }]}>
-            <Text style={styles.encouragementText}>
+            <Text style={[styles.encouragementText, {
+              fontSize: screenType === 'small' ? 12 : 14,
+            }]}>
               Rejoignez la communauté Baye Zale Cutt
             </Text>
           </Animated.View>
@@ -330,7 +473,6 @@ const styles = StyleSheet.create({
   },
   skipButton: {
     position: 'absolute',
-    top: 60,
     right: 24,
     zIndex: 1000,
     borderRadius: 25,
@@ -345,12 +487,10 @@ const styles = StyleSheet.create({
   },
   skipText: {
     color: '#FFFFFF',
-    fontSize: 14,
     fontWeight: '600',
   },
   progressContainer: {
     position: 'absolute',
-    top: 120,
     left: 0,
     right: 0,
     flexDirection: 'row',
@@ -384,26 +524,24 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'relative',
   },
-  decorativePattern: {
+  floatingElements: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
   },
-  decorativeCircle: {
+  floatingElement: {
     position: 'absolute',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: '#FFFFFF',
   },
   contentContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
-    paddingTop: 200,
   },
   iconContainer: {
     marginBottom: 48,
@@ -422,12 +560,7 @@ const styles = StyleSheet.create({
   },
   iconGlow: {
     position: 'absolute',
-    width: 140,
-    height: 140,
-    borderRadius: 70,
     backgroundColor: 'rgba(255,255,255,0.1)',
-    top: -10,
-    left: -10,
   },
   mainIcon: {
     fontSize: 56,
@@ -482,9 +615,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   featureIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -516,9 +646,8 @@ const styles = StyleSheet.create({
   },
   bottomContainer: {
     position: 'absolute',
-    bottom: 60,
-    left: 24,
-    right: 24,
+    left: 0,
+    right: 0,
     alignItems: 'center',
   },
   actionButton: {
@@ -541,22 +670,17 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   actionButtonIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   actionButtonIconText: {
-    fontSize: 16,
     color: '#FFFFFF',
   },
   encouragementContainer: {
     alignItems: 'center',
   },
   encouragementText: {
-    fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
     textAlign: 'center',
     fontStyle: 'italic',
