@@ -13,7 +13,14 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kheuchbi.BayeZaleCutt",
+      "buildNumber": "1.0.0",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Cette app utilise la caméra pour prendre des photos de vos coiffures.",
+        "NSPhotoLibraryUsageDescription": "Cette app accède à vos photos pour sélectionner des images de coiffures.",
+        "NSLocationWhenInUseUsageDescription": "Cette app utilise votre localisation pour vous diriger vers le salon."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,16 +28,66 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.kheuchbi.BayeZaleCutt"
+      "package": "com.kheuchbi.BayeZaleCutt",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.CALL_PHONE",
+        "android.permission.VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.WAKE_LOCK"
+      ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
     },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#4F7FEE",
+          "defaultChannel": "baye-zale-notifications"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Cette app utilise votre localisation pour vous diriger vers le salon Baye Zale."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Cette app utilise la caméra pour prendre des photos de vos coiffures."
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "2bf42978-f50d-4a91-bf08-3e269d12097f"
+      },
+      "firebaseConfig": {
+        "apiKey": "AIzaSyBC_5XQxlvq5g2rq5-8LQYvwhkD9LKev5Y",
+        "authDomain": "baye-zale-cutt.firebaseapp.com",
+        "projectId": "baye-zale-cutt",
+        "storageBucket": "baye-zale-cutt.appspot.com",
+        "messagingSenderId": "45635702844",
+        "appId": "1:45635702844:android:b5e77f19e8a345c0fcb339"
       }
     },
-    "owner": "cheikhbi"
+    "owner": "cheikhbi",
+    "updates": {
+      "url": "https://u.expo.dev/2bf42978-f50d-4a91-bf08-3e269d12097f"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
   }
 }
