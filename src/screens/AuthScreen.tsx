@@ -30,7 +30,6 @@ import {
 } from 'firebase/auth';
 
 // Import Google Sign-In
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
 const { width, height } = Dimensions.get('window');
 
@@ -56,7 +55,6 @@ export default function AuthScreen({ onComplete, onSkip }: AuthScreenProps) {
 
   useEffect(() => {
     // Configuration Google Sign-In
-    configureGoogleSignIn();
 
     // Animation d'entrée spectaculaire avec rotation du logo
     Animated.sequence([
@@ -87,16 +85,7 @@ export default function AuthScreen({ onComplete, onSkip }: AuthScreenProps) {
     ]).start();
   }, []);
 
-  // Configuration Google Sign-In
-  const configureGoogleSignIn = () => {
-    GoogleSignin.configure({
-      // Remplacez par votre Web Client ID depuis Firebase Console
-      webClientId: 'VOTRE_WEB_CLIENT_ID_FIREBASE.apps.googleusercontent.com',
-      offlineAccess: true,
-      hostedDomain: '',
-      forceCodeForRefreshToken: true,
-    });
-  };
+ 
 
   // Animation de rotation continue pour le logo
   const startLogoAnimation = () => {
@@ -211,66 +200,7 @@ export default function AuthScreen({ onComplete, onSkip }: AuthScreenProps) {
   };
 
   // Authentification Google FONCTIONNELLE
-  const handleGoogleAuth = async () => {
-    setIsLoading(true);
-    
-    try {
-      console.log('🚀 Début de l\'authentification Google...');
-      
-      // Vérifier si Google Play Services sont disponibles
-      await GoogleSignin.hasPlayServices({
-        showPlayServicesUpdateDialog: true,
-      });
-      
-      console.log('✅ Google Play Services disponibles');
-      
-      // Déconnexion préalable pour éviter les conflits
-      await GoogleSignin.signOut();
-      
-      // Lancer la connexion Google
-      const userInfo = await GoogleSignin.signIn();
-      console.log('📧 Utilisateur Google connecté:', userInfo.user.email);
-      
-      // Créer les credentials Firebase
-      const googleCredential = GoogleAuthProvider.credential(userInfo.idToken);
-      
-      // Authentifier avec Firebase
-      const userCredential = await signInWithCredential(auth, googleCredential);
-      
-      console.log('🎉 Authentification Firebase réussie:', userCredential.user.uid);
-      
-      Alert.alert(
-        '🎉 Connexion Google réussie !',
-        `Bienvenue ${userCredential.user.displayName || userCredential.user.email} !`,
-        [{ text: 'Continuer', onPress: onComplete }]
-      );
-      
-    } catch (error: any) {
-      console.error('❌ Erreur Google Auth:', error);
-      
-      let errorMessage = 'Impossible de se connecter avec Google';
-      
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        console.log('ℹ️ Connexion Google annulée par l\'utilisateur');
-        return; // Ne pas afficher d'erreur si l'utilisateur annule
-      } else if (error.code === statusCodes.IN_PROGRESS) {
-        errorMessage = 'Connexion en cours, veuillez patienter...';
-      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        errorMessage = 'Google Play Services non disponible';
-      } else if (error.code === 'auth/account-exists-with-different-credential') {
-        errorMessage = 'Un compte existe déjà avec cette adresse email';
-      } else if (error.code === 'auth/invalid-credential') {
-        errorMessage = 'Credentials Google invalides';
-      } else {
-        console.log('🔍 Code d\'erreur Google:', error.code);
-        console.log('🔍 Message d\'erreur:', error.message);
-      }
-      
-      Alert.alert('❌ Erreur Google', errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+ 
 
   // Mot de passe oublié
   const handleForgotPassword = async () => {
@@ -636,7 +566,6 @@ export default function AuthScreen({ onComplete, onSkip }: AuthScreenProps) {
                   {/* Google Login Button FONCTIONNEL */}
                   <TouchableOpacity
                     style={styles.googleButton}
-                    onPress={handleGoogleAuth}
                     disabled={isLoading}
                   >
                     <LinearGradient

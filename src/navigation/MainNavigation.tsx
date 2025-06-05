@@ -9,7 +9,7 @@ import HomeScreen from '../screens/main/HomeScreen';
 import BookingScreen from '../screens/main/BookingScreen';
 import GalleryScreen from '../screens/main/GalleryScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
-import AdminScreen from '../screens/admin/AdminScreen';
+import AdminScreen from '../screens/admin/AdminDashboardEnhanced';
 import FirebaseTestScreen from '../screens/tests/FirebaseTestScreen';
 
 const { width } = Dimensions.get('window');
